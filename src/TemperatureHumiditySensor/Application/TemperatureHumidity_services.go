@@ -1,22 +1,22 @@
 package application
 
 import (
-	entities "Noisesubscribe/src/TemperatureHumiditySensor/Domain/Entities"
-	repositories "Noisesubscribe/src/TemperatureHumiditySensor/Domain/Repositories"
 	"encoding/json"
 	"log"
 
+	entities "Noisesubscribe/src/TemperatureHumiditySensor/Domain/Entities"
+	repositories "Noisesubscribe/src/TemperatureHumiditySensor/Domain/Repositories"
 	"github.com/eclipse/paho.mqtt.golang"
 )
 
 // TemperatureHumidityService maneja la lógica de negocio para los datos de temperatura y humedad
 type TemperatureHumidityService struct {
-	repository repositories.TemperatureHumidityRepository
+	Repository repositories.TemperatureHumidityRepository
 }
 
 // NewTemperatureHumidityService crea una nueva instancia de TemperatureHumidityService
 func NewTemperatureHumidityService(repository repositories.TemperatureHumidityRepository) *TemperatureHumidityService {
-	return &TemperatureHumidityService{repository: repository}
+	return &TemperatureHumidityService{Repository: repository}
 }
 
 // Start inicia la suscripción al broker MQTT y maneja los mensajes relacionados con la temperatura y humedad
@@ -44,7 +44,7 @@ func (service *TemperatureHumidityService) messageHandler(client mqtt.Client, ms
 	}
 
 	// Reenviar los datos de temperatura y humedad a la API o sistema correspondiente
-	if err := service.repository.ProcessAndForward(tempHumidityData); err != nil {
+	if err := service.Repository.ProcessAndForward(tempHumidityData); err != nil {
 		log.Println("❌ Error al reenviar los datos:", err)
 		return
 	}

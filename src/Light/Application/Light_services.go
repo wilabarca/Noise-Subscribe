@@ -1,54 +1,67 @@
 package application
 
 import (
-	entities "Noisesubscribe/src/Light/Domain/Entities"
-	repositories "Noisesubscribe/src/Light/Domain/Repositories"
-
-	"encoding/json"
+	"errors"
 	"log"
 
-	"github.com/eclipse/paho.mqtt.golang"
+	entities "Noisesubscribe/src/Light/Domain/Entities"
+	repositories "Noisesubscribe/src/Light/Domain/Repositories"
 )
 
 // LightService maneja la lógica de negocio para los datos de la luz
 type LightService struct {
-    repository repositories.LightRepository
+	repository repositories.LightRepository
 }
 
 // NewLightService crea una nueva instancia de LightService
 func NewLightService(repository repositories.LightRepository) *LightService {
-    return &LightService{repository: repository}
+	if repository == nil {
+		log.Fatal("❌ El repositorio de luz no puede ser nulo")
+	}
+	return &LightService{repository: repository}
 }
 
-// Start inicia la suscripción al broker MQTT y maneja los mensajes relacionados con la luz
-func (service *LightService) Start(mqttClient mqtt.Client, topic string) error {
-    // Se suscribe al topic donde llegan los datos sobre la luz
-    if token := mqttClient.Subscribe(topic, 0, service.messageHandler); token.Wait() && token.Error() != nil {
-        log.Println("❌ Error al suscribirse al topic:", token.Error())
-        return token.Error()
-    }
+// GetLightStatus obtiene el estado de la luz
+func (service *LightService) GetLightStatus() (bool, error) {
+	// Aquí simplemente se retorna el estado de la luz como ejemplo
+	// En una implementación real, se consultarían los datos desde el repositorio o base de datos
+	lightStatus := true // Asumimos que la luz está encendida
 
-    log.Println("✅ Suscripción exitosa al topic:", topic)
-    return nil
+	return lightStatus, nil
 }
 
-// messageHandler procesa los mensajes recibidos sobre la luz
-func (service *LightService) messageHandler(client mqtt.Client, msg mqtt.Message) {
-    // Log para visualizar el mensaje recibido
-    log.Printf("🔊 Mensaje recibido: %s\n", msg.Payload())
+// TurnOnLight enciende la luz
+func (service *LightService) TurnOnLight() error {
+	// Crear una entidad Light con estado encendido
+	lightData := entities.Light{Estado: true}
 
-    // Deserializar los datos sobre la luz
-    var lightData entities.Light
-    if err := json.Unmarshal(msg.Payload(), &lightData); err != nil {
-        log.Println("❌ Error al parsear el mensaje:", err)
-        return
-    }
+	// Procesar los datos a través del repositorio
+	if err := service.repository.ProcessAndForward(lightData); err != nil {
+		return errors.New("❌ Error al encender la luz: " + err.Error())
+	}
 
-    // Reenviar los datos de la luz a la API o sistema correspondiente
-    if err := service.repository.ProcessAndForward(lightData); err != nil {
-        log.Println("❌ Error al reenviar los datos:", err)
-        return
-    }
+	return nil
+}
 
-    log.Println("✅ Datos de luz enviados a la API:", lightData)
+// TurnOffLight apaga la luz
+func (service *LightService) TurnOffLight() error {
+	// Crear una entidad Light con estado apagado
+	lightData := entities.Light{Estado: false}
+
+	// Procesar los datos a través del repositorio
+	if err := service.repository.ProcessAndForward(lightData); err != nil {
+		return errors.New("❌ Error al apagar la luz: " + err.Error())
+	}
+
+	return nil
+}
+
+// SetLightIntensity ajusta la intensidad de la luz
+func (service *LightService) SetLightIntensity(lightData entities.Light) error {
+	// Procesar los datos a través del repositorio
+	if err := service.repository.ProcessAndForward(lightData); err != nil {
+		return errors.New("❌ Error al ajustar la intensidad de la luz: " + err.Error())
+	}
+
+	return nil
 }

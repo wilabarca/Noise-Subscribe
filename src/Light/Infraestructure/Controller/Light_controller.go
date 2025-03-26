@@ -1,4 +1,4 @@
-package controllers
+package controller
 
 import (
 	"encoding/json"
@@ -21,9 +21,12 @@ func NewLightController(service *application.LightService) *LightController {
 
 // GetLightStatus obtiene el estado actual de la luz (encendida o apagada)
 func (controller *LightController) GetLightStatus(w http.ResponseWriter, r *http.Request) {
-	// Aquí, dependiendo de tu implementación, se puede obtener el estado de la luz desde algún repositorio o servicio.
-	// Por ejemplo, si es un estado guardado en base de datos, se consulta y se devuelve.
-	lightStatus := map[string]bool{"estado": true} // Estado de la luz (true = encendida, false = apagada)
+	// Obtener el estado de la luz a través del servicio
+	lightStatus, err := controller.service.GetLightStatus()
+	if err != nil {
+		http.Error(w, "Error al obtener el estado de la luz", http.StatusInternalServerError)
+		return
+	}
 
 	// Convertir el estado a JSON
 	w.Header().Set("Content-Type", "application/json")
@@ -32,11 +35,8 @@ func (controller *LightController) GetLightStatus(w http.ResponseWriter, r *http
 
 // TurnOnLight enciende la luz
 func (controller *LightController) TurnOnLight(w http.ResponseWriter, r *http.Request) {
-	// Crear una entidad Light con estado encendido
-	lightData := entities.Light{Estado: true}
-
-	// Procesar y reenviar los datos
-	if err := controller.service.repository.ProcessAndForward(lightData); err != nil {
+	// Llamar al servicio para encender la luz
+	if err := controller.service.TurnOnLight(); err != nil {
 		log.Println("❌ Error al encender la luz:", err)
 		http.Error(w, "Error al encender la luz", http.StatusInternalServerError)
 		return
@@ -49,11 +49,8 @@ func (controller *LightController) TurnOnLight(w http.ResponseWriter, r *http.Re
 
 // TurnOffLight apaga la luz
 func (controller *LightController) TurnOffLight(w http.ResponseWriter, r *http.Request) {
-	// Crear una entidad Light con estado apagado
-	lightData := entities.Light{Estado: false}
-
-	// Procesar y reenviar los datos
-	if err := controller.service.repository.ProcessAndForward(lightData); err != nil {
+	// Llamar al servicio para apagar la luz
+	if err := controller.service.TurnOffLight(); err != nil {
 		log.Println("❌ Error al apagar la luz:", err)
 		http.Error(w, "Error al apagar la luz", http.StatusInternalServerError)
 		return
@@ -75,8 +72,8 @@ func (controller *LightController) SetLightIntensity(w http.ResponseWriter, r *h
 		return
 	}
 
-	// Procesar y reenviar los datos
-	if err := controller.service.repositories.ProcessAndForward(lightData); err != nil {
+	// Llamar al servicio para ajustar la intensidad de la luz
+	if err := controller.service.SetLightIntensity(lightData); err != nil {
 		log.Println("❌ Error al ajustar la intensidad de la luz:", err)
 		http.Error(w, "Error al ajustar la intensidad", http.StatusInternalServerError)
 		return
