@@ -6,28 +6,28 @@ import (
 
 	entities "Noisesubscribe/src/SoundSensor/Domain/Entities"
 	repositories "Noisesubscribe/src/SoundSensor/Domain/Repositories"
-	adapters "Noisesubscribe/src/SoundSensor/Infraestructure/Adapters"
-
+	adapterRepo "Noisesubscribe/src/SoundSensor/Infraestructure/Adapters"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	rabbit "Noisesubscribe/src/SoundSensor/Infraestructure/Adapters"
 )
 
 type SoundSensorService struct {
-	repository  repositories.SoundSensorRepository
-	mqttAdapter *adapters.MQTTClientAdapter
-	apiURL      string
+	repository      repositories.SoundSensorRepository
+	mqttAdapter     *adapterRepo.MQTTClientAdapter
+	apiURL          string
+	rabbitMQAdapter *rabbit.RabbitMQAdapter
 }
 
-func NewSoundSensorService(mqttAdapter *adapters.MQTTClientAdapter, apiURL string) *SoundSensorService {
+func NewSoundSensorService(mqttAdapter *adapterRepo.MQTTClientAdapter, apiURL string, rabbitMQAdapter *rabbit.RabbitMQAdapter) *SoundSensorService {
 	return &SoundSensorService{
-		repository:  adapters.NewSoundSensorRepositoryAdapter(apiURL),
-		mqttAdapter: mqttAdapter,
-		apiURL:      apiURL,
+		repository:      adapterRepo.NewSoundSensorRepositoryAdapter(apiURL),
+		mqttAdapter:     mqttAdapter,
+		apiURL:          apiURL,
+		rabbitMQAdapter: rabbitMQAdapter,
 	}
 }
 
-// Start inicia la suscripción con el topic y la URL de la API para el sensor de sonido
 func (service *SoundSensorService) Start(topic string, apiURL string) error {
-	// Establecer la URL de la API si no se pasó antes
 	if apiURL != "" {
 		service.apiURL = apiURL
 	}
@@ -57,12 +57,17 @@ func (service *SoundSensorService) messageHandler(client mqtt.Client, msg mqtt.M
 
 	// Filtro: Nivel de sonido > 70 dB
 	if soundData.RuidoDB > 70 {
-		// No pasamos el apiURL aquí porque el adaptador ya lo maneja internamente
 		if err := service.repository.ProcessAndForward(soundData); err != nil {
-			log.Println("Error al reenviar los datos:", err)
+			log.Println("Error al reenviar los datos a la API:", err)
 			return
 		}
 		log.Println("Datos enviados a la API Consumidora:", soundData)
+
+		// Publicar en RabbitMQ
+		if err := service.rabbitMQAdapter.Publish("SoundSensorQueue", msg.Payload()); err != nil {
+			log.Println("Error al publicar en RabbitMQ:", err)
+			return
+		}
 	} else {
 		log.Println("Nivel de sonido normal, ignorando...")
 	}

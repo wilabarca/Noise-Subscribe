@@ -26,7 +26,7 @@ func (adapter *MQTTClientAdapter) Connect() error {
         log.Println("❌ Error al conectar al broker MQTT:", token.Error())
         return token.Error()
     }
-    log.Println("✅ Conectado al broker MQTT exitosamente.")
+    log.Println("Conectado al broker MQTT exitosamente.")
     return nil
 }
 
@@ -36,6 +36,6 @@ func (adapter *MQTTClientAdapter) Subscribe(topic string, qos byte, messageHandl
         log.Println("❌ Error al suscribirse al topic:", token.Error())
         return token.Error()
     }
-    log.Println("✅ Suscripción exitosa al topic:", topic)
+    log.Println("Suscripción exitosa al topic:", topic)
     return nil
 }

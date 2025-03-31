@@ -6,27 +6,28 @@ import (
 
 	entities "Noisesubscribe/src/AirQuality/Domain/Entities"
 	repositories "Noisesubscribe/src/AirQuality/Domain/Repositories"
-	adapters "Noisesubscribe/src/AirQuality/Infraestructure/Adapters"
+	adapterRepo "Noisesubscribe/src/AirQuality/Infraestructure/Adapters"
 	mqtt "github.com/eclipse/paho.mqtt.golang"
+	rabbit "Noisesubscribe/src/AirQuality/Infraestructure/Adapters" 
 )
 
 type AirQualityService struct {
-	repository  repositories.AirQualityRepository
-	mqttAdapter *adapters.MQTTClientAdapter
-	apiURL      string
+	repository      repositories.AirQualityRepository
+	mqttAdapter     *adapterRepo.MQTTClientAdapter
+	apiURL          string
+	rabbitMQAdapter *rabbit.RabbitMQAdapter
 }
 
-func NewAirQualityService(mqttAdapter *adapters.MQTTClientAdapter, apiURL string) *AirQualityService {
+func NewAirQualityService(mqttAdapter *adapterRepo.MQTTClientAdapter, apiURL string, rabbitMQAdapter *rabbit.RabbitMQAdapter) *AirQualityService {
 	return &AirQualityService{
-		repository:  adapters.NewAirQualityRepositoryAdapter(apiURL),
-		mqttAdapter: mqttAdapter,
-		apiURL:      apiURL,
+		repository:      adapterRepo.NewAirQualityRepositoryAdapter(apiURL),
+		mqttAdapter:     mqttAdapter,
+		apiURL:          apiURL,
+		rabbitMQAdapter: rabbitMQAdapter,
 	}
 }
 
-// Start inicia la suscripción con el topic y la URL de la API
 func (service *AirQualityService) Start(topic string, apiURL string) error {
-	// Establecer la URL de la API si no se pasó antes
 	if apiURL != "" {
 		service.apiURL = apiURL
 	}
@@ -56,12 +57,17 @@ func (service *AirQualityService) messageHandler(client mqtt.Client, msg mqtt.Me
 
 	// Filtro: Temperatura > 30°C
 	if airData.Temperatura > 30 {
-		// No pasamos el apiURL aquí porque el adaptador ya lo maneja internamente
 		if err := service.repository.ProcessAndForward(airData); err != nil {
-			log.Println("Error al reenviar los datos:", err)
+			log.Println("Error al reenviar los datos a la API:", err)
 			return
 		}
 		log.Println("Datos enviados a la API Consumidora:", airData)
+
+		// Publicar en RabbitMQ
+		if err := service.rabbitMQAdapter.Publish("AirQualityQueue", msg.Payload()); err != nil {
+			log.Println("Error al publicar en RabbitMQ:", err)
+			return
+		}
 	} else {
 		log.Println("Temperatura normal, ignorando...")
 	}
