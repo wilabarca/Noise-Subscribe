@@ -2,7 +2,6 @@ package adapters
 
 import (
     mqtt "github.com/eclipse/paho.mqtt.golang"
-    
 )
 
 type MQTTClientAdapter struct {

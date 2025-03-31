@@ -1,42 +1,49 @@
 package adapters
 
 import (
-    "bytes"
-    "encoding/json"
-    "errors"
-    "log"
-    "net/http"
+	"bytes"
+	"encoding/json"
+	"errors"
+	"log"
+	"net/http"
 
-    entities "Noisesubscribe/src/AirQuality/Domain/Entities"
+	entities "Noisesubscribe/src/AirQuality/Domain/Entities"
 )
 
 type AirQualityRepositoryAdapter struct {
-    ApiURL string
+	apiURL string
 }
 
 func NewAirQualityRepositoryAdapter(apiURL string) *AirQualityRepositoryAdapter {
-    return &AirQualityRepositoryAdapter{
-        ApiURL: apiURL,
-    }
+	// Aseguramos que la URL predeterminada se utiliza si apiURL está vacío
+	if apiURL == "" {
+		apiURL = "http://localhost:8080/airqualitysensor/"
+	}
+	return &AirQualityRepositoryAdapter{
+		apiURL: apiURL,
+	}
 }
 
-func (adapter *AirQualityRepositoryAdapter) ProcessAndForward(airData entities.AirQuality) error {
-    data, err := json.Marshal(airData)
-    if err != nil {
-        log.Println("❌ Error al convertir los datos a JSON:", err)
-        return err
-    }
+func (adapter *AirQualityRepositoryAdapter) ProcessAndForward(airData entities.AirQualitySensor) error {
+	// No necesitamos el apiURL como parámetro, ya que lo estamos tomando de la propiedad del adaptador.
+	data, err := json.Marshal(airData)
+	if err != nil {
+		log.Printf("Error al serializar datos: %v | Datos: %+v\n", err, airData)
+		return err
+	}
 
-    resp, err := http.Post(adapter.ApiURL, "application/json", bytes.NewBuffer(data))
-    if err != nil {
-        log.Println("❌ Error al enviar los datos a la API 2:", err)
-        return err
-    }
-    defer resp.Body.Close()
+	resp, err := http.Post(adapter.apiURL, "application/json", bytes.NewBuffer(data))
+	if err != nil {
+		log.Printf("Error en POST a %s: %v\n", adapter.apiURL, err)
+		return err
+	}
+	defer resp.Body.Close()
 
-    if resp.StatusCode != http.StatusOK {
-        return errors.New("respuesta no exitosa: " + resp.Status)
-    }
+	if resp.StatusCode != http.StatusOK {
+		log.Printf("Respuesta no exitosa: %d | URL: %s\n", resp.StatusCode, adapter.apiURL)
+		return errors.New("código de estado: " + resp.Status)
+	}
 
-    return nil
+	log.Printf("Datos enviados correctamente a %s\n", adapter.apiURL)
+	return nil
 }

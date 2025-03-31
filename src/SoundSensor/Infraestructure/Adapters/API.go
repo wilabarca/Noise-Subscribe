@@ -1,44 +1,53 @@
 package adapters
 
 import (
-	application "Noisesubscribe/src/SoundSensor/Application"
+	entities "Noisesubscribe/src/SoundSensor/Domain/Entities"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 )
 
-type API2Adapter struct {
+// SoundSensorRepositoryAdapter es un adaptador que maneja la interacción con una API externa para el sensor de sonido
+type SoundSensorRepositoryAdapter struct {
 	apiURL string
 }
 
-// NewAPI2Adapter crea una nueva instancia del adaptador para enviar datos a la API 2
-func NewAPI2Adapter(apiURL string) *API2Adapter {
-	return &API2Adapter{
+// NewSoundSensorRepositoryAdapter crea una nueva instancia del adaptador de API para el sensor de sonido
+func NewSoundSensorRepositoryAdapter(apiURL string) *SoundSensorRepositoryAdapter {
+	// Aseguramos que la URL predeterminada se utiliza si apiURL está vacío
+	if apiURL == "" {
+		apiURL = "http://localhost:8080/soundsensor/"
+	}
+	return &SoundSensorRepositoryAdapter{
 		apiURL: apiURL,
 	}
 }
 
-// SendToAPI2 envía los datos del sensor a la API 2
-func (adapter *API2Adapter) SendToAPI2(sensorData application.SoundSensorService) error {
+// ProcessAndForward procesa los datos del sensor de sonido y los envía a la API externa
+func (adapter *SoundSensorRepositoryAdapter) ProcessAndForward(sensorData entities.SoundSensor) error {
+	// No necesitamos el apiURL como parámetro, ya que lo estamos tomando de la propiedad del adaptador.
 	data, err := json.Marshal(sensorData)
 	if err != nil {
-		log.Println("Error al convertir los datos a JSON:", err)
+		log.Printf("Error al serializar datos: %v | Datos: %+v\n", err, sensorData)
 		return err
 	}
 
+	// Realizar una solicitud HTTP POST a la API externa
 	resp, err := http.Post(adapter.apiURL, "application/json", bytes.NewBuffer(data))
 	if err != nil {
-		log.Println("Error al enviar los datos a la API 2:", err)
+		log.Printf("Error en POST a %s: %v\n", adapter.apiURL, err)
 		return err
 	}
 	defer resp.Body.Close()
 
+	// Verificar si la respuesta de la API es exitosa
 	if resp.StatusCode != http.StatusOK {
-		log.Printf("Error en la respuesta de la API 2: %d %s", resp.StatusCode, resp.Status)
-		return err
+		log.Printf("Respuesta no exitosa: %d | URL: %s\n", resp.StatusCode, adapter.apiURL)
+		return errors.New("código de estado: " + resp.Status)
 	}
 
-	log.Println("Datos enviados correctamente a la API 2.")
+	log.Printf("Datos enviados correctamente a %s\n", adapter.apiURL)
 	return nil
 }

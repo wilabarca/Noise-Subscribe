@@ -1,15 +1,11 @@
 package controller
 
-
-
 import (
 	"encoding/json"
 	"log"
 	"net/http"
 
 	application "Noisesubscribe/src/AirQuality/Application"
-
-	"github.com/eclipse/paho.mqtt.golang"
 )
 
 // AirQualityController es el controlador que maneja las solicitudes HTTP relacionadas con la calidad del aire
@@ -30,30 +26,24 @@ func (controller *AirQualityController) StartSubscription(w http.ResponseWriter,
 		return
 	}
 
-	// Obtener el topic desde el cuerpo de la solicitud
+	// Obtener el topic y la URL de la API desde el cuerpo de la solicitud
 	var requestData struct {
-		Topic string `json:"topic"`
+		Topic  string `json:"topic"`
+		ApiURL string `json:"apiURL"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&requestData); err != nil {
 		http.Error(w, "Error al decodificar los datos", http.StatusBadRequest)
 		return
 	}
 
-	// Aquí se debe inicializar el cliente MQTT
-	// (Este ejemplo asume que ya tienes la configuración para conectarte al broker MQTT)
-	// Crear el cliente MQTT (aunque no se usa en este ejemplo, se podría usar para operaciones futuras)
-	mqttClient := mqtt.NewClient(mqtt.NewClientOptions().AddBroker("tcp://localhost:1883")) // Reemplazar con tu broker real
-	if token := mqttClient.Connect(); token.Wait() && token.Error() != nil {
-		http.Error(w, "Error al conectar al broker MQTT", http.StatusInternalServerError)
-		log.Println("❌ Error al conectar al broker MQTT:", token.Error())
-		return
-	}
-	defer mqttClient.Disconnect(250)
+	// Depuración: imprimir los valores recibidos
+	log.Println("Topic:", requestData.Topic)
+	log.Println("ApiURL:", requestData.ApiURL)
 
 	// Iniciar la suscripción al topic usando el servicio
-	if err := controller.service.Start(requestData.Topic); err != nil {
+	if err := controller.service.Start(requestData.Topic, requestData.ApiURL); err != nil {
 		http.Error(w, "Error al iniciar la suscripción", http.StatusInternalServerError)
-		log.Println("❌ Error al iniciar la suscripción:", err)
+		log.Println("Error al iniciar la suscripción:", err)
 		return
 	}
 
@@ -63,4 +53,3 @@ func (controller *AirQualityController) StartSubscription(w http.ResponseWriter,
 		"message": "Suscripción iniciada correctamente",
 	})
 }
-

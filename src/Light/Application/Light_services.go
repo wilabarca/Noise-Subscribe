@@ -16,7 +16,7 @@ type LightService struct {
 // NewLightService crea una nueva instancia de LightService
 func NewLightService(repository repositories.LightRepository) *LightService {
 	if repository == nil {
-		log.Fatal("❌ El repositorio de luz no puede ser nulo")
+		log.Fatal("El repositorio de luz no puede ser nulo")
 	}
 	return &LightService{repository: repository}
 }
@@ -37,7 +37,7 @@ func (service *LightService) TurnOnLight() error {
 
 	// Procesar los datos a través del repositorio
 	if err := service.repository.ProcessAndForward(lightData); err != nil {
-		return errors.New("❌ Error al encender la luz: " + err.Error())
+		return errors.New("Error al encender la luz: " + err.Error())
 	}
 
 	return nil
@@ -50,7 +50,7 @@ func (service *LightService) TurnOffLight() error {
 
 	// Procesar los datos a través del repositorio
 	if err := service.repository.ProcessAndForward(lightData); err != nil {
-		return errors.New("❌ Error al apagar la luz: " + err.Error())
+		return errors.New("Error al apagar la luz: " + err.Error())
 	}
 
 	return nil
@@ -60,7 +60,7 @@ func (service *LightService) TurnOffLight() error {
 func (service *LightService) SetLightIntensity(lightData entities.Light) error {
 	// Procesar los datos a través del repositorio
 	if err := service.repository.ProcessAndForward(lightData); err != nil {
-		return errors.New("❌ Error al ajustar la intensidad de la luz: " + err.Error())
+		return errors.New("Error al ajustar la intensidad de la luz: " + err.Error())
 	}
 
 	return nil
