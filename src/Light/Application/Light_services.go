@@ -1,67 +1,86 @@
 package application
 
 import (
+	"encoding/json"
 	"errors"
 	"log"
 
 	entities "Noisesubscribe/src/Light/Domain/Entities"
 	repositories "Noisesubscribe/src/Light/Domain/Repositories"
+	adapter "Noisesubscribe/src/Light/Infraestructure/Adapters" // Asegúrate de importar el adaptador RabbitMQ
+
+	"github.com/streadway/amqp"
 )
 
-// LightService maneja la lógica de negocio para los datos de la luz
 type LightService struct {
-	repository repositories.LightRepository
+	repository       repositories.LightRepository
+	rabbitMQAdapter  *adapter.RabbitMQAdapter
+	minLightLevel    float64
+	maxLightLevel    float64
 }
 
 // NewLightService crea una nueva instancia de LightService
-func NewLightService(repository repositories.LightRepository) *LightService {
+func NewLightService(repository repositories.LightRepository, rabbitMQAdapter *adapter.RabbitMQAdapter, minLightLevel, maxLightLevel float64) *LightService {
 	if repository == nil {
 		log.Fatal("El repositorio de luz no puede ser nulo")
 	}
-	return &LightService{repository: repository}
+	if rabbitMQAdapter == nil {
+		log.Fatal("El adaptador RabbitMQ no puede ser nulo")
+	}
+
+	return &LightService{
+		repository:      repository,
+		rabbitMQAdapter: rabbitMQAdapter,
+		minLightLevel:   minLightLevel,
+		maxLightLevel:   maxLightLevel,
+	}
 }
 
-// GetLightStatus obtiene el estado de la luz
-func (service *LightService) GetLightStatus() (bool, error) {
-	// Aquí simplemente se retorna el estado de la luz como ejemplo
-	// En una implementación real, se consultarían los datos desde el repositorio o base de datos
-	lightStatus := true // Asumimos que la luz está encendida
+// Start inicia la escucha de la cola RabbitMQ
+func (service *LightService) Start(queueName string) error {
+	messages, err := service.rabbitMQAdapter.Consume(queueName)
+	if err != nil {
+		log.Println("❌ No se pudo consumir los mensajes:", err)
+		return err
+	}
 
-	return lightStatus, nil
-}
-
-// TurnOnLight enciende la luz
-func (service *LightService) TurnOnLight() error {
-	// Crear una entidad Light con estado encendido
-	lightData := entities.Light{Estado: true}
-
-	// Procesar los datos a través del repositorio
-	if err := service.repository.ProcessAndForward(lightData); err != nil {
-		return errors.New("Error al encender la luz: " + err.Error())
+	// Procesar los mensajes de la cola
+	for msg := range messages {
+		if err := service.processLightMessage(msg); err != nil {
+			log.Println("❌ Error al procesar el mensaje de luz:", err)
+		} else {
+			log.Println("✅ Mensaje procesado correctamente")
+		}
 	}
 
 	return nil
 }
 
-// TurnOffLight apaga la luz
-func (service *LightService) TurnOffLight() error {
-	// Crear una entidad Light con estado apagado
-	lightData := entities.Light{Estado: false}
+// processLightMessage procesa un mensaje recibido de la cola RabbitMQ
+func (service *LightService) processLightMessage(msg amqp.Delivery) error {
+	var lightData repositories.LightRepository // Suponiendo que LightData es la estructura que representa los datos de luz
 
-	// Procesar los datos a través del repositorio
-	if err := service.repository.ProcessAndForward(lightData); err != nil {
-		return errors.New("Error al apagar la luz: " + err.Error())
+	// Deserializar el mensaje
+	if err := json.Unmarshal(msg.Body, &lightData); err != nil {
+		return errors.New("Error al deserializar el mensaje: " + err.Error())
 	}
 
-	return nil
+	// Verificar el estado de la luz con los datos recibidos
+	return service.checkLightLevel(entities.Light{})
 }
 
-// SetLightIntensity ajusta la intensidad de la luz
-func (service *LightService) SetLightIntensity(lightData entities.Light) error {
-	// Procesar los datos a través del repositorio
-	if err := service.repository.ProcessAndForward(lightData); err != nil {
-		return errors.New("Error al ajustar la intensidad de la luz: " + err.Error())
+// checkLightLevel verifica si el nivel de luz está dentro del rango adecuado
+func (service *LightService) checkLightLevel(lightData entities.Light) error {
+	// Verificar si el nivel de luz está dentro del rango adecuado
+	if lightData.Nivel < service.minLightLevel {
+		log.Println("Nivel de luz bajo, se requiere más luz.")
+		return nil
+	}
+	if lightData.Nivel > service.maxLightLevel {
+		log.Println("Nivel de luz alto, se requiere reducir la luz.")
+		return nil
 	}
 
+	log.Println("Nivel de luz adecuado.")
 	return nil
 }

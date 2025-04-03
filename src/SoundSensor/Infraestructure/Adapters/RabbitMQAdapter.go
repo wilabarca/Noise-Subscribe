@@ -28,7 +28,7 @@ func NewRabbitMQAdapter(amqpURL string) (*RabbitMQAdapter, error) {
 	}, nil
 }
 
-func (r *RabbitMQAdapter) Publish(queueName string, body []byte) error {
+func (r *RabbitMQAdapter) Consume(queueName string) (<-chan amqp.Delivery, error) {
 	// Declarar la cola para asegurarnos de que existe
 	_, err := r.channel.QueueDeclare(
 		queueName,
@@ -40,25 +40,26 @@ func (r *RabbitMQAdapter) Publish(queueName string, body []byte) error {
 	)
 	if err != nil {
 		log.Println("❌ Error al declarar la cola:", err)
-		return err
+		return nil, err
 	}
 
-	err = r.channel.Publish(
-		"",        // exchange
-		queueName, // routing key = nombre de la cola
-		false,
-		false,
-		amqp.Publishing{
-			ContentType: "application/json",
-			Body:        body,
-		},
+	// Consumir los mensajes de la cola
+	messages, err := r.channel.Consume(
+		queueName, // nombre de la cola
+		"",        // consumer tag
+		true,      // auto ack
+		false,     // exclusive
+		false,     // no-local
+		false,     // no-wait
+		nil,       // arguments
 	)
 	if err != nil {
-		log.Println("❌ Error al publicar en la cola", queueName, ":", err)
-		return err
+		log.Println("❌ Error al consumir los mensajes de la cola:", err)
+		return nil, err
 	}
-	log.Printf("✅ Mensaje publicado en la cola '%s'\n", queueName)
-	return nil
+
+	log.Printf("✅ Consumiendo mensajes de la cola '%s'\n", queueName)
+	return messages, nil
 }
 
 func (r *RabbitMQAdapter) Close() {

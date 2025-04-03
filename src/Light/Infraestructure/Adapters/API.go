@@ -3,44 +3,60 @@ package adapters
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
+
 	"Noisesubscribe/src/Light/Domain/Entities"
 )
 
-// APIAdapter es un adaptador que maneja la interacción con una API externa
-type APIAdapter struct {
+// APIAdapter es una estructura que maneja la interacción con una API externa
+type APIAdapter struct{}
+
+// NewAPIAdapter crea una nueva instancia del adaptador para la API del sensor de luz.
+func NewAPIAdapter() *APIAdapter {
+	return &APIAdapter{}
+}
+
+// LightRepositoryAdapter es el adaptador que maneja la interacción con el repositorio de datos del sensor de luz.
+type LightRepositoryAdapter struct {
 	apiURL string
 }
 
-// NewAPIAdapter crea una nueva instancia del adaptador de API
-func NewAPIAdapter(apiURL string) *APIAdapter {
-	return &APIAdapter{apiURL: apiURL}
+// NewLightRepositoryAdapter crea una nueva instancia del adaptador para el repositorio de luz.
+func NewLightRepositoryAdapter(apiURL string) *LightRepositoryAdapter {
+	// Aseguramos que la URL predeterminada se utiliza si apiURL está vacío
+	if apiURL == "" {
+		apiURL = "http://localhost:8080/lightsensor/" // URL predeterminada
+	}
+	return &LightRepositoryAdapter{
+		apiURL: apiURL,
+	}
 }
 
-// SendLightDataEnvio procesa los datos de luz y los envía a la API externa
-func (adapter *APIAdapter) SendLightData(lightData entities.Light) error {
+// ProcessAndForward procesa los datos del sensor de luz y los envía a la API.
+func (adapter *LightRepositoryAdapter) ProcessAndForward(lightData entities.Light) error {
 	// Convertir la entidad Light a JSON
-	lightDataJSON, err := json.Marshal(lightData)
+	data, err := json.Marshal(lightData)
 	if err != nil {
-		log.Println("Error al convertir los datos de luz a JSON:", err)
+		log.Printf("Error al serializar datos: %v | Datos: %+v\n", err, lightData)
 		return err
 	}
 
 	// Realizar una solicitud HTTP POST a la API externa
-	resp, err := http.Post(adapter.apiURL, "application/json", bytes.NewBuffer(lightDataJSON))
+	resp, err := http.Post(adapter.apiURL, "application/json", bytes.NewBuffer(data))
 	if err != nil {
-		log.Println("Error al enviar los datos a la API:", err)
+		log.Printf("Error en POST a %s: %v\n", adapter.apiURL, err)
 		return err
 	}
 	defer resp.Body.Close()
 
-	// Verificar la respuesta de la API
+	// Verificar el código de respuesta de la API
 	if resp.StatusCode != http.StatusOK {
-		log.Println("Error en la respuesta de la API, código de estado:", resp.StatusCode)
-		return err
+		log.Printf("Respuesta no exitosa: %d | URL: %s\n", resp.StatusCode, adapter.apiURL)
+		return errors.New("código de estado: " + resp.Status)
 	}
 
-	log.Println("Datos de luz enviados correctamente a la API.")
+	log.Printf("Datos de luz enviados correctamente a %s\n", adapter.apiURL)
 	return nil
 }
