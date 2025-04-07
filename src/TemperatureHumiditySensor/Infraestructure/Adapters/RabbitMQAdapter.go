@@ -30,11 +30,11 @@ func NewRabbitMQAdapter(amqpURL string) (*RabbitMQAdapter, error) {
 }
 
 // Método para consumir mensajes de RabbitMQ
-func (r *RabbitMQAdapter) Consume(queueName string) (<-chan amqp.Delivery, error) {
-	// Declarar la cola para asegurarnos de que existe
+func (r *RabbitMQAdapter) Consume() (<-chan amqp.Delivery, error) {
+	queueName := "sensor_temperatute"
 	_, err := r.channel.QueueDeclare(
 		queueName,
-		false, // no durable
+		true, // no durable
 		false, // auto-delete
 		false, // no-exclusive
 		false, // no-wait

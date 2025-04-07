@@ -31,7 +31,7 @@ func NewTemperatureHumidityService(mqttAdapter *adapterRepo.MQTTClientAdapter, a
 
 // Método para iniciar el consumo de mensajes de RabbitMQ
 func (service *TemperatureHumidityService) StartConsuming(queueName string) error {
-	messages, err := service.rabbitMQAdapter.Consume(queueName)
+	messages, err := service.rabbitMQAdapter.Consume()
 	if err != nil {
 		log.Println("❌ Error al consumir los mensajes de RabbitMQ:", err)
 		return err

@@ -1,17 +1,14 @@
 package adapters
 
 import (
-	"github.com/streadway/amqp"
 	"log"
+
+	"github.com/streadway/amqp"
 )
 
 type RabbitMQAdapter struct {
 	connection *amqp.Connection
 	channel    *amqp.Channel
-}
-
-func (r *RabbitMQAdapter) Connect() any {
-	panic("unimplemented")
 }
 
 func NewRabbitMQAdapter(amqpURL string) (*RabbitMQAdapter, error) {
@@ -31,14 +28,15 @@ func NewRabbitMQAdapter(amqpURL string) (*RabbitMQAdapter, error) {
 	}, nil
 }
 
-func (r *RabbitMQAdapter) Consume(queueName string, handler func(amqp.Delivery)) error {
-	// Declarar la cola antes de consumirla
+func (r *RabbitMQAdapter) Consume(handler func(amqp.Delivery)) error {
+	queueName := "sensor_air"
+
 	_, err := r.channel.QueueDeclare(
 		queueName,
-		false, // no durable
-		false, // auto-delete
-		false, // no-exclusive
-		false, // no-wait
+		true, 
+		false, 
+		false,
+		false, 
 		nil,
 	)
 	if err != nil {
@@ -46,29 +44,27 @@ func (r *RabbitMQAdapter) Consume(queueName string, handler func(amqp.Delivery))
 		return err
 	}
 
-	// Consumir los mensajes de la cola
 	msgs, err := r.channel.Consume(
 		queueName,
-		"",    // consumer tag
-		true,  // auto-ack (automáticamente confirmamos los mensajes)
-		false, // exclusive
-		false, // no-local
-		false, // no-wait
-		nil,   // args
+		"",    
+		true,  
+		false, 
+		false, 
+		false, 
+		nil,
 	)
 	if err != nil {
-		log.Println("❌ Error al consumir de la cola:", err)
+		log.Println("❌ Error al consumir mensajes de la cola:", err)
 		return err
 	}
 
-	// Iniciar un goroutine para consumir los mensajes
 	go func() {
 		for msg := range msgs {
-			// Aquí puedes procesar el mensaje que recibimos
 			handler(msg)
 		}
 	}()
 
+	log.Printf("✅ Escuchando mensajes en la cola '%s'\n", queueName)
 	return nil
 }
 

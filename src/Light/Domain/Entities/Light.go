@@ -1,7 +1,6 @@
-
 package entities
 
-// Light representa los datos del sensor de luz
+
 type Light struct {
 	ID         int     `json:"id"`
 	SensorID   string  `json:"sensor_id"`

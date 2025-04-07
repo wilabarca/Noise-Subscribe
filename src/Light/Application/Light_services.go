@@ -7,7 +7,7 @@ import (
 
 	entities "Noisesubscribe/src/Light/Domain/Entities"
 	repositories "Noisesubscribe/src/Light/Domain/Repositories"
-	adapter "Noisesubscribe/src/Light/Infraestructure/Adapters" // Asegúrate de importar el adaptador RabbitMQ
+	adapter "Noisesubscribe/src/Light/Infraestructure/Adapters" 
 
 	"github.com/streadway/amqp"
 )
@@ -19,7 +19,6 @@ type LightService struct {
 	maxLightLevel    float64
 }
 
-// NewLightService crea una nueva instancia de LightService
 func NewLightService(repository repositories.LightRepository, rabbitMQAdapter *adapter.RabbitMQAdapter, minLightLevel, maxLightLevel float64) *LightService {
 	if repository == nil {
 		log.Fatal("El repositorio de luz no puede ser nulo")
@@ -36,9 +35,8 @@ func NewLightService(repository repositories.LightRepository, rabbitMQAdapter *a
 	}
 }
 
-// Start inicia la escucha de la cola RabbitMQ
 func (service *LightService) Start(queueName string) error {
-	messages, err := service.rabbitMQAdapter.Consume(queueName)
+	messages, err := service.rabbitMQAdapter.Consume()
 	if err != nil {
 		log.Println("❌ No se pudo consumir los mensajes:", err)
 		return err
@@ -58,20 +56,17 @@ func (service *LightService) Start(queueName string) error {
 
 // processLightMessage procesa un mensaje recibido de la cola RabbitMQ
 func (service *LightService) processLightMessage(msg amqp.Delivery) error {
-	var lightData repositories.LightRepository // Suponiendo que LightData es la estructura que representa los datos de luz
+	var lightData entities.Light
 
-	// Deserializar el mensaje
 	if err := json.Unmarshal(msg.Body, &lightData); err != nil {
 		return errors.New("Error al deserializar el mensaje: " + err.Error())
 	}
 
-	// Verificar el estado de la luz con los datos recibidos
-	return service.checkLightLevel(entities.Light{})
+	return service.checkLightLevel(lightData)
 }
 
-// checkLightLevel verifica si el nivel de luz está dentro del rango adecuado
+
 func (service *LightService) checkLightLevel(lightData entities.Light) error {
-	// Verificar si el nivel de luz está dentro del rango adecuado
 	if lightData.Nivel < service.minLightLevel {
 		log.Println("Nivel de luz bajo, se requiere más luz.")
 		return nil

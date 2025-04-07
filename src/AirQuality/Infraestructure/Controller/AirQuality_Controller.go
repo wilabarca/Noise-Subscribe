@@ -8,7 +8,6 @@ import (
 	application "Noisesubscribe/src/AirQuality/Application"
 )
 
-// AirQualityController es el controlador que maneja las solicitudes HTTP relacionadas con la calidad del aire
 type AirQualityController struct {
 	service *application.AirQualityService
 }
@@ -26,7 +25,6 @@ func (controller *AirQualityController) StartSubscription(w http.ResponseWriter,
 		return
 	}
 
-	// Obtener el topic y la URL de la API desde el cuerpo de la solicitud
 	var requestData struct {
 		Topic  string `json:"topic"`
 		ApiURL string `json:"apiURL"`

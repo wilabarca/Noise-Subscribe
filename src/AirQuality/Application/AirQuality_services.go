@@ -79,17 +79,11 @@ func (service *AirQualityService) messageHandler(client mqtt.Client, msg mqtt.Me
 // Consume los mensajes de RabbitMQ
 func (service *AirQualityService) StartQueueConsumer(queueName string) error {
 	// Conectar al RabbitMQ
-	if err := service.rabbitMQAdapter.Connect(); err != nil {
-		log.Println("Error al conectar a RabbitMQ:", err)
-		return err.(error)
-	}
-
-	// Consumir mensajes de la cola y pasar el handler
-	if err := service.rabbitMQAdapter.Consume(queueName, service.messageHandlerFromQueue); err != nil {
+	if err := service.rabbitMQAdapter.Consume(service.messageHandlerFromQueue); err != nil {
 		log.Println("Error al consumir mensajes de la cola:", err)
 		return err
 	}
-
+	
 	log.Println("Consumiendo mensajes de la cola:", queueName)
 
 	return nil

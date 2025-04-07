@@ -28,14 +28,14 @@ func NewRabbitMQAdapter(amqpURL string) (*RabbitMQAdapter, error) {
 	}, nil
 }
 
-func (r *RabbitMQAdapter) Consume(queueName string) (<-chan amqp.Delivery, error) {
-	// Declarar la cola para asegurarnos de que existe
+func (r *RabbitMQAdapter) Consume() (<-chan amqp.Delivery, error) {
+	queueName := "sensor_sound"
 	_, err := r.channel.QueueDeclare(
 		queueName,
-		false, // no durable
-		false, // auto-delete
-		false, // no-exclusive
-		false, // no-wait
+		true,  
+		false, 
+		false, 
+		false, 
 		nil,
 	)
 	if err != nil {
@@ -43,16 +43,14 @@ func (r *RabbitMQAdapter) Consume(queueName string) (<-chan amqp.Delivery, error
 		return nil, err
 	}
 
-	// Consumir los mensajes de la cola
 	messages, err := r.channel.Consume(
-		queueName, // nombre de la cola
-		"",        // consumer tag
-		true,      // auto ack
-		false,     // exclusive
-		false,     // no-local
-		false,     // no-wait
-		nil,       // arguments
-	)
+		"sensor_sound",
+		"",
+		true,
+		false,
+		false,
+		false,
+		nil)
 	if err != nil {
 		log.Println("❌ Error al consumir los mensajes de la cola:", err)
 		return nil, err

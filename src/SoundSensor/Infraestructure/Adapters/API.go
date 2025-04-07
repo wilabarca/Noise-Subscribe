@@ -16,7 +16,6 @@ type SoundSensorRepositoryAdapter struct {
 
 // NewSoundSensorRepositoryAdapter crea una nueva instancia del adaptador de API para el sensor de sonido
 func NewSoundSensorRepositoryAdapter(apiURL string) *SoundSensorRepositoryAdapter {
-	// Aseguramos que la URL predeterminada se utiliza si apiURL está vacío
 	if apiURL == "" {
 		apiURL = "http://localhost:8080/soundsensor/"
 	}
@@ -34,7 +33,6 @@ func (adapter *SoundSensorRepositoryAdapter) ProcessAndForward(sensorData entiti
 		return err
 	}
 
-	// Realizar una solicitud HTTP POST a la API externa
 	resp, err := http.Post(adapter.apiURL, "application/json", bytes.NewBuffer(data))
 	if err != nil {
 		log.Printf("Error en POST a %s: %v\n", adapter.apiURL, err)
@@ -42,7 +40,6 @@ func (adapter *SoundSensorRepositoryAdapter) ProcessAndForward(sensorData entiti
 	}
 	defer resp.Body.Close()
 
-	// Verificar si la respuesta de la API es exitosa
 	if resp.StatusCode != http.StatusOK {
 		log.Printf("Respuesta no exitosa: %d | URL: %s\n", resp.StatusCode, adapter.apiURL)
 		return errors.New("código de estado: " + resp.Status)

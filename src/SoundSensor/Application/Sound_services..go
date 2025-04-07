@@ -28,7 +28,6 @@ func NewSoundSensorService(mqttAdapter *adapterRepo.MQTTClientAdapter, apiURL st
 	}
 }
 
-// Función para iniciar la suscripción y también empezar a consumir mensajes de RabbitMQ
 func (service *SoundSensorService) Start(topic string, apiURL string) error {
 	if apiURL != "" {
 		service.apiURL = apiURL
@@ -61,7 +60,6 @@ func (service *SoundSensorService) messageHandler(client mqtt.Client, msg mqtt.M
 		return
 	}
 
-	// Filtro: Nivel de sonido > 70 dB
 	if soundData.RuidoDB > 70 {
 		if err := service.repository.ProcessAndForward(soundData); err != nil {
 			log.Println("Error al reenviar los datos a la API:", err)
@@ -73,15 +71,13 @@ func (service *SoundSensorService) messageHandler(client mqtt.Client, msg mqtt.M
 	}
 }
 
-// Función para consumir mensajes de RabbitMQ
 func (service *SoundSensorService) consumeRabbitMQMessages(queueName string) {
-	messages, err := service.rabbitMQAdapter.Consume(queueName)
+	messages, err := service.rabbitMQAdapter.Consume()
 	if err != nil {
 		log.Println("❌ Error al consumir mensajes de RabbitMQ:", err)
 		return
 	}
 
-	// Procesar los mensajes consumidos
 	for msg := range messages {
 		log.Printf("Mensaje recibido de RabbitMQ: %s\n", msg.Body)
 
@@ -91,7 +87,6 @@ func (service *SoundSensorService) consumeRabbitMQMessages(queueName string) {
 			continue
 		}
 
-		// Filtro: Nivel de sonido > 70 dB
 		if soundData.RuidoDB > 70 {
 			if err := service.repository.ProcessAndForward(soundData); err != nil {
 				log.Println("Error al reenviar los datos a la API:", err)
