@@ -24,9 +24,7 @@ func NewSoundSensorRepositoryAdapter(apiURL string) *SoundSensorRepositoryAdapte
 	}
 }
 
-// ProcessAndForward procesa los datos del sensor de sonido y los envía a la API externa
 func (adapter *SoundSensorRepositoryAdapter) ProcessAndForward(sensorData entities.SoundSensor) error {
-	// No necesitamos el apiURL como parámetro, ya que lo estamos tomando de la propiedad del adaptador.
 	data, err := json.Marshal(sensorData)
 	if err != nil {
 		log.Printf("Error al serializar datos: %v | Datos: %+v\n", err, sensorData)

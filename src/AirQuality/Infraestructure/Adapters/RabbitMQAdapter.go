@@ -45,7 +45,7 @@ func (r *RabbitMQAdapter) Consume(handler func(amqp.Delivery)) error {
 	}
 
 	msgs, err := r.channel.Consume(
-		queueName,
+		"sensor_air",
 		"",    
 		true,  
 		false, 

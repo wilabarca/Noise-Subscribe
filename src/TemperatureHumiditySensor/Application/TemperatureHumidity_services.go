@@ -30,40 +30,12 @@ func NewTemperatureHumidityService(mqttAdapter *adapterRepo.MQTTClientAdapter, a
 }
 
 // Método para iniciar el consumo de mensajes de RabbitMQ
-func (service *TemperatureHumidityService) StartConsuming(queueName string) error {
-	messages, err := service.rabbitMQAdapter.Consume()
-	if err != nil {
-		log.Println("❌ Error al consumir los mensajes de RabbitMQ:", err)
-		return err
-	}
-
-	// Procesar los mensajes consumidos
-	for msg := range messages {
-		log.Printf("Mensaje recibido de RabbitMQ: %s\n", msg.Body)
-
-		var tempHumidityData entities.TemperatureHumidity
-		if err := json.Unmarshal(msg.Body, &tempHumidityData); err != nil {
-			log.Println("Error al parsear el mensaje:", err)
-			continue
-		}
-
-		// Filtro: Si la temperatura > 30°C
-		if tempHumidityData.Temperature > 30 {
-			if err := service.apiAdapter.SendToAPI(tempHumidityData); err != nil {
-				log.Println("Error al enviar los datos a la API:", err)
-				continue
-			}
-			log.Println("Datos enviados a la API Consumidora:", tempHumidityData)
-		} else {
-			log.Println("Temperatura normal, ignorando...")
-		}
-	}
-
-	return nil
-}
 
 // Método para iniciar la suscripción MQTT
-func (service *TemperatureHumidityService) Start(topic string) error {
+func (service *TemperatureHumidityService) Start(topic string, apiURL string) error {
+	if apiURL != "" {
+		service.apiURL = apiURL
+	}
 	if err := service.mqttAdapter.Connect(); err != nil {
 		log.Println("❌ Error al conectar al broker MQTT:", err)
 		return err

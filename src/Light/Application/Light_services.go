@@ -35,7 +35,7 @@ func NewLightService(repository repositories.LightRepository, rabbitMQAdapter *a
 	}
 }
 
-func (service *LightService) Start(queueName string) error {
+func (service *LightService) Start(queueName string, apiURL string) error {
 	messages, err := service.rabbitMQAdapter.Consume()
 	if err != nil {
 		log.Println("❌ No se pudo consumir los mensajes:", err)

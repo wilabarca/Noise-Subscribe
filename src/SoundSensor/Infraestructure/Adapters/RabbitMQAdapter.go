@@ -14,7 +14,6 @@ type RabbitMQAdapter struct {
 func NewRabbitMQAdapter(amqpURL string) (*RabbitMQAdapter, error) {
 	conn, err := amqp.Dial(amqpURL)
 	if err != nil {
-		log.Println("❌ Error al conectar a RabbitMQ:", err)
 		return nil, err
 	}
 	ch, err := conn.Channel()

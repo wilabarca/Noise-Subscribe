@@ -30,8 +30,8 @@ func main() {
 
 	temperatureTopic := "sensor.temperature"
 	soundTopic := "sensor.sound"
-	airQualityTopic := "sensor.air_quality"
-	lightTopic := "sensor.light" 
+	airQualityTopic := "sensor.air"
+	lightTopic := "sensor.light"
 
 	thRabbitAdapter, err := th_adapters.NewRabbitMQAdapter(amqpURL)
 	if err != nil {
@@ -51,7 +51,7 @@ func main() {
 	}
 	defer aqRabbitAdapter.Close()
 
-	lightRabbitAdapter, err := light_adapters.NewRabbitMQAdapter(amqpURL) // Conexión RabbitMQ para Luz
+	lightRabbitAdapter, err := light_adapters.NewRabbitMQAdapter(amqpURL)
 	if err != nil {
 		log.Fatalf("Error al conectar RabbitMQ para Luz: %v", err)
 	}
@@ -59,7 +59,6 @@ func main() {
 
 	thMQTT := th_adapters.NewMQTTClientAdapter(brokerURL)
 	thService := th_app.NewTemperatureHumidityService(thMQTT, apiURL, thRabbitAdapter)
-
 	ssMQTT := ss_adapters.NewMQTTClientAdapter(brokerURL)
 	ssService := ss_app.NewSoundSensorService(ssMQTT, apiURL, ssRabbitAdapter)
 
@@ -71,13 +70,12 @@ func main() {
 	lightService := light_app.NewLightService(
 		lightRepo,
 		lightRabbitAdapter,
-		100.0, 
+		100.0,
 		800.0,
 	)
 
-	// Iniciar cada sensor en goroutines con su propio topic
 	go func() {
-		if err := thService.Start(temperatureTopic); err != nil {
+		if err := thService.Start(temperatureTopic, ""); err != nil {
 			log.Fatalf("Error iniciando sensor Temperatura/Humedad🌡️: %v", err)
 		}
 	}()
@@ -95,7 +93,7 @@ func main() {
 	}()
 
 	go func() {
-		if err := lightService.Start(lightTopic); err != nil {
+		if err := lightService.Start(lightTopic, ""); err != nil {
 			log.Fatalf("Error iniciando sensor de Luz: %v", err)
 		}
 	}()
