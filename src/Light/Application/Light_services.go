@@ -42,7 +42,6 @@ func (service *LightService) Start(queueName string, apiURL string) error {
 		return err
 	}
 
-	// Procesar los mensajes de la cola
 	for msg := range messages {
 		if err := service.processLightMessage(msg); err != nil {
 			log.Println("❌ Error al procesar el mensaje de luz:", err)
@@ -54,7 +53,6 @@ func (service *LightService) Start(queueName string, apiURL string) error {
 	return nil
 }
 
-// processLightMessage procesa un mensaje recibido de la cola RabbitMQ
 func (service *LightService) processLightMessage(msg amqp.Delivery) error {
 	var lightData entities.Light
 

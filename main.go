@@ -35,7 +35,7 @@ func main() {
 
 	thRabbitAdapter, err := th_adapters.NewRabbitMQAdapter(amqpURL)
 	if err != nil {
-		log.Fatalf("Error al conectar RabbitMQ para Temperatura/Humedad: %v", err)
+		log.Fatalf("Error al coñnectar RabbitMQ para Temperatura/Humedad: %v", err)
 	}
 	defer thRabbitAdapter.Close()
 

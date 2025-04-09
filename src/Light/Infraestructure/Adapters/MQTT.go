@@ -26,7 +26,7 @@ func (adapter *MQTTClientAdapter) Connect() error {
         log.Println("❌ Error al conectar al broker MQTT:", token.Error())
         return token.Error()
     }
-    log.Println("Conectado al broker MQTT exitosamente.")
+    log.Println("Conectado al sensor de luz.")
     return nil
 }
 

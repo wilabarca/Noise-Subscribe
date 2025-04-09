@@ -40,6 +40,5 @@ func (r *LightAPIRepository) ProcessAndForward(lightData entities.Light) error {
 }
 
 func (r *LightAPIRepository) GetLightData() (entities.Light, error) {
-	// Esto es opcional dependiendo de si lo usarás
 	return entities.Light{}, nil
 }

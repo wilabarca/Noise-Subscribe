@@ -47,7 +47,7 @@ func (r *RabbitMQAdapter) Consume() (<-chan amqp.Delivery, error) {
 
 	// Consumir los mensajes de la cola
 	messages, err := r.channel.Consume(
-		queueName, // nombre de la cola
+		"sensor_light", // nombre de la cola
 		"",        // consumer tag
 		true,      // auto ack
 		false,     // exclusive

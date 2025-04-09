@@ -43,10 +43,10 @@ func (service *SoundSensorService) Start(topic string, apiURL string) error {
 		return err
 	}
 
-	log.Println("Suscripción exitosa al topic:", topic)
+	log.Println("✅Suscripción exitosa al topic:", topic)
 
 	// Consumir mensajes de la cola en RabbitMQ
-	go service.consumeRabbitMQMessages("SoundSensorQueue") // consume en paralelo
+	go service.consumeRabbitMQMessages("SoundSensorQueue") 
 	return nil
 }
 
@@ -79,22 +79,22 @@ func (service *SoundSensorService) consumeRabbitMQMessages(queueName string) {
 	}
 
 	for msg := range messages {
-		log.Printf("Mensaje recibido de RabbitMQ: %s\n", msg.Body)
+		log.Printf("Datos recibidos del sensor de sonido: %s\n", msg.Body)
 
 		var soundData entities.SoundSensor
 		if err := json.Unmarshal(msg.Body, &soundData); err != nil {
-			log.Println("Error al parsear el mensaje de RabbitMQ:", err)
+			log.Print("Error al parsear el mensaje de RabbitMQ:", err)
 			continue
 		}
 
 		if soundData.RuidoDB > 70 {
 			if err := service.repository.ProcessAndForward(soundData); err != nil {
-				log.Println("Error al reenviar los datos a la API:", err)
+				log.Print("Error al reenviar los datos a la API:", err)
 				continue
 			}
-			log.Println("Datos reenviados a la API Consumidora desde RabbitMQ:", soundData)
+			log.Print("Datos reenviados a la API Consumidora desde RabbitMQ:", soundData)
 		} else {
-			log.Println("Nivel de sonido normal desde RabbitMQ, ignorando...")
+			log.Print("Nivel de sonido normal desde RabbitMQ, ignorando...")
 		}
 	}
 }

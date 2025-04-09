@@ -28,7 +28,7 @@ func NewRabbitMQAdapter(amqpURL string) (*RabbitMQAdapter, error) {
 	}, nil
 }
 
-func (r *RabbitMQAdapter) Consume(handler func(amqp.Delivery)) error {
+func (r *RabbitMQAdapter) Consume() (<-chan amqp.Delivery,  error) {
 	queueName := "sensor_air"
 
 	_, err := r.channel.QueueDeclare(
@@ -41,7 +41,7 @@ func (r *RabbitMQAdapter) Consume(handler func(amqp.Delivery)) error {
 	)
 	if err != nil {
 		log.Println("❌ Error al declarar la cola:", err)
-		return err
+		return nil, err
 	}
 
 	msgs, err := r.channel.Consume(
@@ -55,17 +55,13 @@ func (r *RabbitMQAdapter) Consume(handler func(amqp.Delivery)) error {
 	)
 	if err != nil {
 		log.Println("❌ Error al consumir mensajes de la cola:", err)
-		return err
+		return nil,err
 	}
 
-	go func() {
-		for msg := range msgs {
-			handler(msg)
-		}
-	}()
+
 
 	log.Printf("✅ Escuchando mensajes en la cola '%s'\n", queueName)
-	return nil
+	return  msgs, nil
 }
 
 func (r *RabbitMQAdapter) Close() {

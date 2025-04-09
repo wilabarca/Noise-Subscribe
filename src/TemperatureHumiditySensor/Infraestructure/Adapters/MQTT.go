@@ -23,10 +23,10 @@ func NewMQTTClientAdapter(brokerURL string) *MQTTClientAdapter {
 // Connect establishes a connection to the MQTT broker.
 func (a *MQTTClientAdapter) Connect() error {
 	if token := a.client.Connect(); token.Wait() && token.Error() != nil {
-		log.Println(" Error al conectar con el broker MQTT:", token.Error())
+		log.Println(" Error al conectar con el sensor de temperatura:", token.Error())
 		return token.Error()
 	}
-	log.Println("Conectado al broker MQTT.")
+	log.Println("Conectado sensor de temperatura.")
 	return nil
 }
 

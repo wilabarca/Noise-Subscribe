@@ -11,7 +11,6 @@ type RabbitMQAdapter struct {
 	channel    *amqp.Channel
 }
 
-// Nueva función para inicializar el RabbitMQAdapter
 func NewRabbitMQAdapter(amqpURL string) (*RabbitMQAdapter, error) {
 	conn, err := amqp.Dial(amqpURL)
 	if err != nil {
@@ -29,15 +28,14 @@ func NewRabbitMQAdapter(amqpURL string) (*RabbitMQAdapter, error) {
 	}, nil
 }
 
-// Método para consumir mensajes de RabbitMQ
 func (r *RabbitMQAdapter) Consume() (<-chan amqp.Delivery, error) {
-	queueName := "sensor_temperatute"
+	queueName := "sensor_temperature"
 	_, err := r.channel.QueueDeclare(
 		queueName,
-		true, // no durable
-		false, // auto-delete
-		false, // no-exclusive
-		false, // no-wait
+		true, 
+		false, 
+		false,
+		false, 
 		nil,
 	)
 	if err != nil {
@@ -45,15 +43,14 @@ func (r *RabbitMQAdapter) Consume() (<-chan amqp.Delivery, error) {
 		return nil, err
 	}
 
-	// Consumir los mensajes de la cola
 	messages, err := r.channel.Consume(
-		"sensor_temperature", // nombre de la cola
-		"",        // consumer tag
-		true,      // auto ack
-		false,     // exclusive
-		false,     // no-local
-		false,     // no-wait
-		nil,       // arguments
+		"sensor_temperature", 
+		"",      
+		true,     
+		false,    
+		false,     
+		false,    
+		nil,      
 	)
 	if err != nil {
 		log.Println("❌ Error al consumir los mensajes de la cola:", err)

@@ -46,7 +46,9 @@ func (service *TemperatureHumidityService) Start(topic string, apiURL string) er
 		return err
 	}
 
+	
 	log.Println("✅ Suscripción exitosa al topic:", topic)
+	go service.consumeRabbitMQMessages("TemperatureSensorQueue")
 	return nil
 }
 
@@ -71,3 +73,29 @@ func (service *TemperatureHumidityService) messageHandler(client mqtt.Client, ms
 		log.Println("Temperatura normal, ignorando...")
 	}
 }
+
+func (service *TemperatureHumidityService) consumeRabbitMQMessages(queueName string){
+	messages, err := service.rabbitMQAdapter.Consume()
+	if err != nil {
+		log.Printf("Error al consumir los mensajes del sensor de temperatura", err)
+	}
+
+	for msg := range messages {
+		log.Printf("Datos recibidos del sensor de temperatura: %s\n", msg.Body)
+
+		var TemData entities.TemperatureHumidity
+		if err := json.Unmarshal(msg.Body, &TemData); err != nil {
+			log.Printf("Error al parcear los datos del sensor de temperatura: ", err)
+			continue
+		}
+		if TemData.Temperature > 26 {
+			if err := service.repository.ProcessAndForward(TemData); err != nil{
+				log.Printf("Error al enviar los datos a la API: ", err)
+				continue
+			}
+			log.Println("Datos enviados a la API consumidara")
+		} else {
+			log.Println("Temperatura agradable")
+		}
+		}
+	}

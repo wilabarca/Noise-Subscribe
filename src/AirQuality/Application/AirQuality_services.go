@@ -10,7 +10,6 @@ import (
 	rabbit "Noisesubscribe/src/AirQuality/Infraestructure/Adapters"
 
 	mqtt "github.com/eclipse/paho.mqtt.golang"
-	"github.com/streadway/amqp"
 )
 
 type AirQualityService struct {
@@ -28,7 +27,6 @@ func NewAirQualityService(mqttAdapter *adapterRepo.MQTTClientAdapter, apiURL str
 		rabbitMQAdapter: rabbitMQAdapter,
 	}
 }
-
 func (service *AirQualityService) Start(topic string, apiURL string) error {
 	if apiURL != "" {
 		service.apiURL = apiURL
@@ -36,18 +34,23 @@ func (service *AirQualityService) Start(topic string, apiURL string) error {
 
 	if err := service.mqttAdapter.Connect(); err != nil {
 		log.Println("Error al conectar al broker MQTT:", err)
-		return err.(error)
+		return err
 	}
 
 	if err := service.mqttAdapter.Subscribe(topic, 0, service.messageHandler); err != nil {
 		log.Println("Error al suscribirse al topic:", err)
-		return err.(error)
+		return err
 	}
 
-	log.Println("Suscripción exitosa al topic:", topic)
+	log.Println("✅ Suscripción exitosa al topic:", topic)
+
+	// Lanzamos el consumo de la cola en segundo plano
+	go service.consumeRabbitMQMessages("sensor_air")
+
 	return nil
 }
 
+// ✅ Maneja los mensajes de MQTT
 func (service *AirQualityService) messageHandler(client mqtt.Client, msg mqtt.Message) {
 	log.Printf("Mensaje recibido: %s\n", msg.Payload())
 
@@ -57,63 +60,42 @@ func (service *AirQualityService) messageHandler(client mqtt.Client, msg mqtt.Me
 		return
 	}
 
-	// Filtro: Temperatura > 30°C
-	if airData.Temperatura > 30 {
+	if airData.CO2PPM > 1200 {
 		if err := service.repository.ProcessAndForward(airData); err != nil {
 			log.Println("Error al reenviar los datos a la API:", err)
 			return
 		}
 		log.Println("Datos enviados a la API Consumidora:", airData)
-
-		// Ahora no publicamos en RabbitMQ, en lugar de eso vamos a consumir la cola
-		// Esto solo se consume y no se publica nada.
-		if err := service.StartQueueConsumer("AirQualityQueue"); err != nil {
-			log.Println("Error al consumir la cola de RabbitMQ:", err)
-			return
-		}
 	} else {
-		log.Println("Temperatura normal, ignorando...")
+		log.Println("Calidad de aire estable, ignorando...")
 	}
 }
 
-// Consume los mensajes de RabbitMQ
-func (service *AirQualityService) StartQueueConsumer(queueName string) error {
-	// Conectar al RabbitMQ
-	if err := service.rabbitMQAdapter.Consume(service.messageHandlerFromQueue); err != nil {
-		log.Println("Error al consumir mensajes de la cola:", err)
-		return err
-	}
-	
-	log.Println("Consumiendo mensajes de la cola:", queueName)
-
-	return nil
-}
-
-// Manejar el mensaje recibido de la cola RabbitMQ
-func (service *AirQualityService) messageHandlerFromQueue(msg amqp.Delivery) {
-	// Log del mensaje recibido
-	log.Printf("Mensaje recibido desde RabbitMQ: %s\n", msg.Body)
-
-	// Deserializar los datos del mensaje (Body es un []byte)
-	var airData entities.AirQualitySensor
-	if err := json.Unmarshal(msg.Body, &airData); err != nil {
-		log.Println("Error al parsear el mensaje:", err)
-		msg.Ack(false)  // Acknowledge el mensaje aún si hubo error en el parseo
+// ✅ Maneja los mensajes de RabbitMQ con loop como el sensor de sonido
+func (service *AirQualityService) consumeRabbitMQMessages(queueName string) {
+	messages, err := service.rabbitMQAdapter.Consume()
+	if err != nil {
+		log.Println("❌ Error al consumir mensajes de RabbitMQ:", err)
 		return
 	}
 
-	// Filtro: Temperatura > 30°C
-	if airData.Temperatura > 30 {
-		if err := service.repository.ProcessAndForward(airData); err != nil {
-			log.Println("Error al reenviar los datos a la API:", err)
-			msg.Ack(false)  // Acknowledge el mensaje aún si hubo error en el reenvío
-			return
-		}
-		log.Println("Datos enviados a la API Consumidora:", airData)
-	} else {
-		log.Println("Temperatura normal, ignorando...")
-	}
+	for msg := range messages {
+		log.Printf("Mensaje recibido desde la cola '%s': %s\n", queueName, msg.Body)
 
-	// Acknowledge el mensaje después de procesarlo correctamente
-	msg.Ack(false)
+		var airData entities.AirQualitySensor
+		if err := json.Unmarshal(msg.Body, &airData); err != nil {
+			log.Println("Error al parsear el mensaje de RabbitMQ:", err)
+			continue
+		}
+
+		if airData.CO2PPM > 1200 {
+			if err := service.repository.ProcessAndForward(airData); err != nil {
+				log.Println("Error al reenviar los datos a la API:", err)
+				continue
+			}
+			log.Println("Datos reenviados a la API Consumidora desde RabbitMQ:", airData)
+		} else {
+			log.Println("Calidad de aire estable desde RabbitMQ, ignorando...")
+		}
+	}
 }
