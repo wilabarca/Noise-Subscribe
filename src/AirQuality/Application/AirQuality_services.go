@@ -27,75 +27,81 @@ func NewAirQualityService(mqttAdapter *adapterRepo.MQTTClientAdapter, apiURL str
 		rabbitMQAdapter: rabbitMQAdapter,
 	}
 }
+
 func (service *AirQualityService) Start(topic string, apiURL string) error {
 	if apiURL != "" {
 		service.apiURL = apiURL
 	}
 
+	log.Println("[AirQualityService] 🚀 Iniciando conexión con el broker MQTT...")
+
 	if err := service.mqttAdapter.Connect(); err != nil {
-		log.Println("Error al conectar al broker MQTT:", err)
+		log.Println("[AirQualityService] ❌ Error al conectar al broker MQTT:", err)
 		return err
 	}
 
 	if err := service.mqttAdapter.Subscribe(topic, 0, service.messageHandler); err != nil {
-		log.Println("Error al suscribirse al topic:", err)
+		log.Println("[AirQualityService] ❌ Error al suscribirse al topic:", err)
 		return err
 	}
 
-	log.Println("✅ Suscripción exitosa al topic:", topic)
+	log.Printf("[AirQualityService] ✅ Suscripción exitosa al topic: %s\n", topic)
 
-	// Lanzamos el consumo de la cola en segundo plano
 	go service.consumeRabbitMQMessages("sensor_air")
 
 	return nil
 }
 
-// ✅ Maneja los mensajes de MQTT
+// ✅ Maneja los mensajes recibidos desde MQTT
 func (service *AirQualityService) messageHandler(client mqtt.Client, msg mqtt.Message) {
-	log.Printf("Mensaje recibido: %s\n", msg.Payload())
+	log.Printf("[AirQualityService] 📩 Mensaje MQTT recibido: %s\n", msg.Payload())
 
 	var airData entities.AirQualitySensor
 	if err := json.Unmarshal(msg.Payload(), &airData); err != nil {
-		log.Println("Error al parsear el mensaje:", err)
+		log.Println("[AirQualityService] ❌ Error al parsear el mensaje MQTT:", err)
 		return
 	}
 
 	if airData.CO2PPM > 1200 {
+		log.Printf("[AirQualityService] ⚠️ Nivel alto de CO₂ detectado: %.2d ppm\n", airData.CO2PPM)
 		if err := service.repository.ProcessAndForward(airData); err != nil {
-			log.Println("Error al reenviar los datos a la API:", err)
+			log.Println("[AirQualityService] ❌ Error al reenviar los datos a la API:", err)
 			return
 		}
-		log.Println("Datos enviados a la API Consumidora:", airData)
+		log.Println("[AirQualityService] ✅ Datos enviados a la API Consumidora:", airData)
 	} else {
-		log.Println("Calidad de aire estable, ignorando...")
+		log.Printf("[AirQualityService] 🌿 Calidad del aire estable (%.2d ppm)\n", airData.CO2PPM)
 	}
 }
 
-// ✅ Maneja los mensajes de RabbitMQ con loop como el sensor de sonido
+// ✅ Consume mensajes de la cola de RabbitMQ
 func (service *AirQualityService) consumeRabbitMQMessages(queueName string) {
+	log.Printf("[AirQualityService] 📦 Iniciando consumo de mensajes desde RabbitMQ en la cola '%s'...\n", queueName)
+
 	messages, err := service.rabbitMQAdapter.Consume()
 	if err != nil {
-		log.Println("❌ Error al consumir mensajes de RabbitMQ:", err)
+		log.Println("[AirQualityService] ❌ Error al consumir mensajes de RabbitMQ:", err)
 		return
 	}
 
 	for msg := range messages {
-		log.Printf("Mensaje recibido desde la cola '%s': %s\n", queueName, msg.Body)
+		log.Printf("[AirQualityService] 📥 Mensaje recibido desde RabbitMQ: %s\n", msg.Body)
 
 		var airData entities.AirQualitySensor
 		if err := json.Unmarshal(msg.Body, &airData); err != nil {
-			log.Println("Error al parsear el mensaje de RabbitMQ:", err)
+			log.Println("[AirQualityService] ❌ Error al parsear el mensaje de RabbitMQ:", err)
 			continue
 		}
 
 		if airData.CO2PPM > 1200 {
+			log.Printf("[AirQualityService] ⚠️ Nivel alto de CO₂ desde RabbitMQ: %.2d ppm\n", airData.CO2PPM)
 			if err := service.repository.ProcessAndForward(airData); err != nil {
-				log.Println("Error al reenviar los datos a la API:", err)
+				log.Println("[AirQualityService] ❌ Error al reenviar los datos a la API:", err)
 				continue
 			}
-			log.Println("Datos reenviados a la API Consumidora desde RabbitMQ:", airData)
+			log.Println("[AirQualityService] ✅ Datos reenviados a la API Consumidora desde RabbitMQ:", airData)
 		} else {
-			log.Println("Calidad de aire estable desde RabbitMQ, ignorando...")
+			log.Printf("[AirQualityService] 🌿 Calidad de aire estable desde RabbitMQ (%.2d ppm), mensaje ignorado.\n", airData.CO2PPM)
 		}
 	}
 }
